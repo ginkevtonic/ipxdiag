@@ -1,0 +1,129 @@
+{
+    "version": 6,
+    "configurePresets": [
+        {
+            "name": "default",
+            "hidden": true,
+            "binaryDir": "${sourceDir}/build"
+        },
+        {
+            "name": "dos-host-linux",
+            "hidden": true,
+            "inherits": "default",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            },
+            "environment": {
+                "WATCOM": "/opt/watcom",
+                "WATCOM_BINDIR": "$env{WATCOM}/binl64",
+                "PATH": "$env{WATCOM}/binl64:$env{WATCOM}/binl:$penv{PATH}"
+            }
+        },
+        {
+            "name": "dos-host-windows",
+            "hidden": true,
+            "inherits": "default",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            },
+            "environment": {
+                "WATCOM": "C:/WATCOM",
+                "WATCOM_BINDIR": "$env{WATCOM}/binnt64",
+                "Path": "$env{WATCOM}/binnt64;$env{WATCOM}/binnt;$penv{Path}"
+            }
+        },
+        {
+            "name": "dos-base",
+            "hidden": true,
+            "inherits": ["dos-host-linux", "dos-host-windows"],
+            "generator": "Watcom WMake",
+            "environment": {
+                "EDPATH": "$env{WATCOM}/eddat",
+                "INCLUDE": "$env{WATCOM}/h"
+            },
+            "cacheVariables": {
+                "CMAKE_SYSTEM_NAME": "DOS",
+                "CMAKE_C_COMPILER_WORKS": "1",
+                "CMAKE_CXX_COMPILER_WORKS": "1"
+            }
+        },
+        {
+            "name": "dos32-base",
+            "hidden": true,
+            "inherits": "dos-base",
+            "cacheVariables": {
+                "CMAKE_SYSTEM_PROCESSOR": "x86",
+                "CMAKE_C_COMPILER": "$env{WATCOM_BINDIR}/wcl386",
+                "CMAKE_CXX_COMPILER": "$env{WATCOM_BINDIR}/wcl386"
+            }
+        },
+        {
+            "name": "dos16-base",
+            "hidden": true,
+            "inherits": "dos-base",
+            "cacheVariables": {
+                "CMAKE_SYSTEM_PROCESSOR": "I86",
+                "CMAKE_C_COMPILER": "$env{WATCOM_BINDIR}/wcl",
+                "CMAKE_CXX_COMPILER": "$env{WATCOM_BINDIR}/wcl"
+            }
+        },
+        {
+            "name": "dos32-debug",
+            "displayName": "DOS 32-bit (Debug)",
+            "inherits": "dos32-base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "dos32-release",
+            "displayName": "DOS 32-bit (Release)",
+            "inherits": "dos32-base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "dos16-debug",
+            "displayName": "DOS 16-bit (Debug)",
+            "inherits": "dos16-base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "dos16-release",
+            "displayName": "DOS 16-bit (Release)",
+            "inherits": "dos16-base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "dos32-debug",
+            "displayName": "Build DOS 32-bit (Debug)",
+            "configurePreset": "dos32-debug"
+        },
+        {
+            "name": "dos32-release",
+            "displayName": "Build DOS 32-bit (Release)",
+            "configurePreset": "dos32-release"
+        },
+        {
+            "name": "dos16-debug",
+            "displayName": "Build DOS 16-bit (Debug)",
+            "configurePreset": "dos16-debug"
+        },
+        {
+            "name": "dos16-release",
+            "displayName": "Build DOS 16-bit (Release)",
+            "configurePreset": "dos16-release"
+        }
+    ]
+}
