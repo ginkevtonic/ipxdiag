@@ -108,7 +108,17 @@ static void SendPkt(const IPXAddress *dest, DiagPkt *pkt)
     memset(&txHdr, 0, sizeof(txHdr));
     txHdr.checksum = 0xFFFF;
     txHdr.transportControl = 0;
-    txHdr.packetType = 4;
+    {
+        int isBroadcast = (dest->node[0] == 0xFF && dest->node[1] == 0xFF &&
+                            dest->node[2] == 0xFF && dest->node[3] == 0xFF &&
+                            dest->node[4] == 0xFF && dest->node[5] == 0xFF);
+        /* Broadcasts use packet type 20 (0x14), historically reserved for
+         * NetBIOS broadcast traffic -- some IPX tunnels (possibly incl.
+         * DOSBox's) only relay broadcasts of that specific type rather
+         * than any arbitrary packet type. Unicast traffic keeps type 4
+         * ("packet exchange"), which is already confirmed working. */
+        txHdr.packetType = isBroadcast ? 20 : 4;
+    }
     memcpy(txHdr.destNetwork, dest->network, 4);
     memcpy(txHdr.destNode, dest->node, 6);
     txHdr.destSocket = BE16(dest->socket);
@@ -534,7 +544,8 @@ static void PrintTestMenu(void)
     printf("  [0] %s (this PC)\n", myName);
     { int i; for (i = 0; i < nodeCount; i++)
         printf("  [%d] %s\n", i + 1, roster[i].name); }
-    printf("\n R = re-run discovery\n");
+    printf("\n R = re-run discovery (broadcast -- currently not working on your network)\n");
+    printf(" A = manually add a participant by address\n");
     printf(" P = ping test between two nodes\n");
     printf(" B = burst/throughput test between two nodes\n");
     printf(" S = simulated game-traffic test between two nodes\n");
@@ -615,6 +626,41 @@ static int ReadIndex(const char *prompt)
     return atoi(buf);
 }
 
+static void ManualAddParticipant(void)
+{
+    char nameBuf[NAME_LEN];
+    char addrBuf[64];
+    unsigned int net[4], node[6];
+    IPXAddress addr;
+
+    if (nodeCount >= MAX_NODES) { printf("Roster is full.\n"); return; }
+
+    printf("Name for this node: ");
+    if (!gets(nameBuf)) return;
+
+    printf("Its address as printed on its own screen\n");
+    printf("(format: NN:NN:NN:NN:NN:NN:NN:NN:NN:NN -- 4 net bytes then 6 node bytes): ");
+    if (!gets(addrBuf)) return;
+
+    if (sscanf(addrBuf, "%2x:%2x:%2x:%2x:%2x:%2x:%2x:%2x:%2x:%2x",
+               &net[0], &net[1], &net[2], &net[3],
+               &node[0], &node[1], &node[2], &node[3], &node[4], &node[5]) != 10) {
+        printf("Couldn't parse that address -- expected 10 hex byte pairs separated by colons.\n");
+        return;
+    }
+
+    memset(&addr, 0, sizeof(addr));
+    addr.network[0] = (unsigned char)net[0]; addr.network[1] = (unsigned char)net[1];
+    addr.network[2] = (unsigned char)net[2]; addr.network[3] = (unsigned char)net[3];
+    addr.node[0] = (unsigned char)node[0]; addr.node[1] = (unsigned char)node[1];
+    addr.node[2] = (unsigned char)node[2]; addr.node[3] = (unsigned char)node[3];
+    addr.node[4] = (unsigned char)node[4]; addr.node[5] = (unsigned char)node[5];
+    addr.socket = DIAG_SOCKET;
+
+    AddToRoster(&addr, nameBuf);
+    printf("Added '%s' as node [%d].\n", nameBuf, nodeCount);
+}
+
 static void CoordinatorLoop(void)
 {
     DoDiscovery();
@@ -627,6 +673,7 @@ static void CoordinatorLoop(void)
 
         if (c == 'q' || c == 'Q') break;
         if (c == 'r' || c == 'R') { DoDiscovery(); continue; }
+        if (c == 'a' || c == 'A') { ManualAddParticipant(); continue; }
 
         if (c == 'p' || c == 'P' || c == 'b' || c == 'B' || c == 's' || c == 'S') {
             int from, to, profileId = 0;
@@ -716,6 +763,10 @@ int main(int argc, char *argv[])
     printf("chk6: log opened\n"); fflush(stdout);
 
     printf("IPXDIAG -- node '%s', %s\n", myName, isCoordinator ? "COORDINATOR" : "participant");
+    printf("My IPX address -- net %02X:%02X:%02X:%02X  node %02X:%02X:%02X:%02X:%02X:%02X\n",
+           myAddr.network[0], myAddr.network[1], myAddr.network[2], myAddr.network[3],
+           myAddr.node[0], myAddr.node[1], myAddr.node[2],
+           myAddr.node[3], myAddr.node[4], myAddr.node[5]);
 
     if (isCoordinator) CoordinatorLoop();
     else ParticipantLoop();
