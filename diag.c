@@ -708,7 +708,7 @@ int main(int argc, char *argv[])
     Timer_Init();
     printf("chk4: timer initialized\n"); fflush(stdout);
 
-    { int i; for (i = 0; i < RX_POOL; i++) rxEcb[i].completionCode = IPX_CC_INCOMPLETE; }
+    { int i; for (i = 0; i < RX_POOL; i++) rxEcb[i].completionCode = 0xAA; }
     PollReceive();   /* posts all RX_POOL listens for the first time */
     printf("chk5: listens posted\n"); fflush(stdout);
 
